@@ -1,0 +1,40 @@
+FROM python:3.11-slim-bookworm
+
+# copia os arquivos necessários do builder que contém os arquivos do spark
+COPY --from=builder:latest /opt/spark /opt/spark
+
+# instalação dos pacotes necessários
+RUN apt update && \
+    FROM_DEBIANFRONTEND=noninteractive apt install -y \
+    curl \
+    procps \
+    openjdk-17-jre-headless \
+    && rm -rf /var/lib/apt/lists/*
+
+# variáveis de ambiente necessários para o spark master
+ENV SPARK_MODE="master"
+ENV SPARK_HOME="/opt/spark"
+ENV PATH="${SPARK_HOME}/bin:${SPARK_HOME}/sbin/${PATH}"
+ENV SPARK_MASTER_PORT=7077
+ENV SPARK_MASTER_WEB_UI=8080
+ENV SPARK_NO_DAEMONIZE=true
+ENV PYSPARK_PYTHON="/usr/local/bin/python3"
+ENV PYSPARK_DRIVER_PYTHON="/usr/local/bin/python3"
+
+# criação do grupo e usuário de sistema
+RUN groupadd --system --gid 1000 spark && \
+    useradd --system --gid spark --uid 1000 sparkuser && \
+    chown -R sparkuser:spark "${SPARK_HOME}"
+
+USER sparkuser
+
+WORKDIR "${SPARK_HOME}"
+
+# expõe as portas do sparkmaster e do spark web ui
+EXPOSE ${SPARK_MASTER_PORT} ${SPARK_MASTER_WEB_UI}
+
+# executa o script do spark master
+ENTRYPOINT [ "/opt/spark/sbin/start-master.sh" ]
+
+# define como parâmetro de host o 0.0.0.0 para ler em todas as interfaces de rede
+CMD [ "-h", "0.0.0.0" ]
