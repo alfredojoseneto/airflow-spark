@@ -5,7 +5,7 @@ COPY --from=builder:latest /opt/spark /opt/spark
 
 # instalação dos pacotes necessários
 RUN apt update && \
-    FROM_DEBIANFRONTEND=noninteractive apt install -y \
+    FROM_DEBIANFRONTEND=noninteractive apt install -y --no-recommends \
     curl \
     procps \
     openjdk-17-jre-headless \
