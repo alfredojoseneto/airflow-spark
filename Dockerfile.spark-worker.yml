@@ -1,0 +1,32 @@
+FROM python:3.11-slim-bookworm
+
+# copiando a base do apache para o worker
+COPY --from=builder:latest /opt/spark /opt/spark
+
+# instalando os pacotes base que são necessários
+RUN apt update && \
+    DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends \
+    curl \
+    procps \
+    openjdk-17-jre-headless \
+    && rm -rf /var/lib/apt/lists/*
+
+# variáveis de ambiente para o worker
+ENV SPARK_MODE="worker"
+ENV SPARK_HOME="/opt/spark"
+ENV PATH="${SPARK_HOME}/bin:${SPARK_HOME}/sbin:${PATH}"
+ENV SPARK_NO_DAEMONIZE=true
+ENV SPARK_MASTER_URL="spark://spark-master:7077"
+ENV PYSPARK_PYTHON="/usr/local/bin/python3"
+ENV PYSPARK_DRIVER_PYTHON="/usr/local/bin/python3"
+
+# criação do grupo e do usuário de sistema
+RUN groupadd --system --gid 1000 spark && \
+    useradd --system --gid spark --uid 1000 sparkuser && \
+    chown -R sparkuser:spark "${SPARK_HOME}"
+
+USER sparkuser
+WORKDIR "${SPARK_HOME}"
+
+ENTRYPOINT [ "/opt/spark/sbin/start-worker.sh" ]
+CMD [ "spark://spark-master:7077" ]
