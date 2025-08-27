@@ -1,0 +1,57 @@
+name: airflow-spark
+
+services:
+  spark-master:
+    build:
+      context: .
+      dockerfile: Dockerfile.spark-master.yml
+    container_name: spark-master
+    healthcheck:
+      test: [ "CMD-SHELL", "curl --fail http://localhost:8080/json/ || exit 1" ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - net
+    expose:
+      - 7077
+      - 8080
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+
+  spark-worker-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.spark-worker.yml
+    container_name: spark-worker-1
+    environment:
+      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=1G
+    networks:
+      - net
+    depends_on:
+      spark-master:
+        condition: service_healthy
+
+  spark-worker-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.spark-worker.yml
+    container_name: spark-worker-2
+    environment:
+      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=1G
+    networks:
+      - net
+    depends_on:
+      spark-master:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+
+networks:
+  net:
+    driver: bridge
