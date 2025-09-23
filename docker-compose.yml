@@ -1,5 +1,21 @@
 name: airflow-spark
 
+x-spark-common: &spark-common
+  build:
+    context: .
+    dockerfile: Dockerfile.spark-worker.yml
+  environment:
+    - SPARK_WORKER_CORES=1
+    - SPARK_WORKER_MEMORY=1G
+    - SPARK_SSL_ENABLED=no
+    - SPARK_USER=spark
+  networks:
+    - net
+  depends_on: &spark-common-depends-on
+    spark-master:
+      condition: service_healthy
+
+
 services:
   spark-master:
     build:
@@ -22,32 +38,18 @@ services:
       - "8080:8080"
 
   spark-worker-1:
-    build:
-      context: .
-      dockerfile: Dockerfile.spark-worker.yml
+    <<: *spark-common
+    hostname: spark-worker-1
     container_name: spark-worker-1
-    environment:
-      - SPARK_WORKER_CORES=1
-      - SPARK_WORKER_MEMORY=1G
-    networks:
-      - net
     depends_on:
-      spark-master:
-        condition: service_healthy
+      <<: *spark-common-depends-on
 
   spark-worker-2:
-    build:
-      context: .
-      dockerfile: Dockerfile.spark-worker.yml
+    <<: *spark-common
+    hostname: spark-worker-2
     container_name: spark-worker-2
-    environment:
-      - SPARK_WORKER_CORES=1
-      - SPARK_WORKER_MEMORY=1G
-    networks:
-      - net
     depends_on:
-      spark-master:
-        condition: service_healthy
+      <<: *spark-common-depends-on
 
 volumes:
   postgres_data:
